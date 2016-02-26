@@ -12,8 +12,6 @@
 #import "SFInjectionsNotificationsCenter.h"
 #import "SFDYCIDefines.h"
 
-#if TARGET_IPHONE_SIMULATOR
-
 void swizzle(Class c, SEL orig, SEL new) {
    Method origMethod = class_getInstanceMethod(c, orig);
    Method newMethod = class_getInstanceMethod(c, new);
@@ -162,5 +160,3 @@ DYCI_FIX_CATEGORY_BUG(NSObject_DyCInjection);
 }
 
 @end
-
-#endif

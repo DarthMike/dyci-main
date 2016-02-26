@@ -12,8 +12,6 @@
 #import "SFDYCIDefines.h"
 
 
-#if TARGET_IPHONE_SIMULATOR
-
 DYCI_FIX_CATEGORY_BUG(UIViewController_XIBSupport);
 
 
@@ -156,5 +154,3 @@ DYCI_FIX_CATEGORY_BUG(UIViewController_XIBSupport);
 }
 
 @end
-
-#endif
