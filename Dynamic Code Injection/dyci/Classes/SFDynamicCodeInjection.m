@@ -8,22 +8,23 @@
 #import <objc/runtime.h>
 #import "SFDynamicCodeInjection.h"
 #include <dlfcn.h>
-#import "SFFileWatcher.h"
 #import "NSSet+ClassesList.h"
 #import "NSObject+DyCInjection.h"
 #import "SFInjectionsNotificationsCenter.h"
+#import "SFFileSystemCodeInjection.h"
 
-
-@interface SFDynamicCodeInjection () <SFFileWatcherDelegate>
+@interface SFDynamicCodeInjection()
 
 @end
 
 @implementation SFDynamicCodeInjection {
 
    BOOL _enabled;
-
-   SFFileWatcher * _dciDirectoryFileWatcher;
-
+#if TARGET_IPHONE_SIMULATOR
+    SFFileSystemCodeInjection *_fileSystemCodeInjection;
+#else
+#endif
+   
 }
 
 + (void)load {
@@ -53,24 +54,33 @@
 }
 
 + (void)enable {
-
-   if (![self sharedInstance]->_enabled) {
+    
+    
+    SFDynamicCodeInjection *instance = [self sharedInstance];
+   if (!instance->_enabled) {
       
-      [self sharedInstance]->_enabled = YES;
+      instance->_enabled = YES;
 
       // Swizzling init and dealloc methods
       [NSObject allowInjectionSubscriptionOnInitMethod];
 
-      NSString * dciDirectoryPath = [self dciDirectoryPath];
-
-      // Saving application bundle path, to have ability to inject
-      // Resources, xibs, etc
-      [self saveCurrentApplicationBundlePath:dciDirectoryPath];
-
-      // Setting up watcher, to get in touch with director contents
-      [self sharedInstance]->_dciDirectoryFileWatcher =
-       [SFFileWatcher fileWatcherWithPath:dciDirectoryPath
-                                 delegate:[self sharedInstance]];
+#if TARGET_IPHONE_SIMULATOR
+       instance->_fileSystemCodeInjection = [[SFFileSystemCodeInjection alloc] init];
+      [instance->_fileSystemCodeInjection enableWithHandler:^(SFFileSystemCodeInjectionType type, NSString *injectedResourcePath) {
+          switch (type) {
+              case SFFileSystemCodeInjectionTypeCode: {
+                  [instance injectWithLibraryAtPath:injectedResourcePath];
+                  break;
+              }
+              case SFFileSystemCodeInjectionTypeResource: {
+                  [instance injectResourcesAtPath:injectedResourcePath];
+                  break;
+              }
+          }
+      }];
+#else
+       
+#endif
    }
 
 }
@@ -82,10 +92,12 @@
       
       // Re-swizzling init and dealloc methods
       [NSObject allowInjectionSubscriptionOnInitMethod];
-      
-      // Removing file watcher
-      [self sharedInstance]->_dciDirectoryFileWatcher.delegate = nil;
-      [self sharedInstance]->_dciDirectoryFileWatcher = nil;
+       
+#if TARGET_IPHONE_SIMULATOR
+       [[self sharedInstance]->_fileSystemCodeInjection disable];
+#else
+       
+#endif
       NSLog(@"============================================");
       NSLog(@"DYCI : Dynamic Code Injection was stopped   ");
       NSLog(@"============================================");
@@ -93,45 +105,59 @@
    }
 }
 
+#pragma mark - Injection entry points
 
-#pragma mark - Checking for Library
-
-+ (NSString *)dciDirectoryPath {
+- (void)injectResourcesAtPath:(NSString *)path {
+    NSLog(@" ");
+    NSLog(@" ================================================= ");
+    NSLog(@"New resource was injected");
+    NSLog(@"All classes will be notified with");
+    NSLog(@" - (void)updateOnResourceInjection:(NSString *)path ");
+    NSLog(@" ");
     
-    char * userENV = getenv("USER");
-    NSString * dciDirectoryPath = nil;
-    if (userENV != NULL) {
-        dciDirectoryPath = [NSString stringWithFormat:@"/Users/%s/.dyci/", userENV];
-    } else {
-        // Fallback to the path, since, we cannot get USER variable
-        NSString *simUserDirectoryPath = [@"~" stringByExpandingTildeInPath];
-
-        // Assume default installation, which will have /Users/{username}/ structure
-        NSArray * simUserDirectoryPathComponents = [simUserDirectoryPath pathComponents];
-        if (simUserDirectoryPathComponents.count > 3) {
-            // Get first 3 components
-            NSMutableArray * macUserDirectoryPathComponents = [[simUserDirectoryPathComponents subarrayWithRange:NSMakeRange(0, 3)] mutableCopy];
-            [macUserDirectoryPathComponents addObject:@".dyci"];
-            dciDirectoryPath = [NSString pathWithComponents:macUserDirectoryPathComponents];
-        }
-
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        if (![fileManager fileExistsAtPath:dciDirectoryPath]) {
-            // Fallback for users who have changed default HOME directiory path
-            // So Idea is that whe have USERHOME/Library/Developer.... etc
-            // So we should put everything we can before Library developer
-            // 
-            NSRange userHomeEndPosition = [simUserDirectoryPath rangeOfString:@"/Library/Developer"];
-            NSString * macUserHomePath = [simUserDirectoryPath substringToIndex:userHomeEndPosition.location];
-            dciDirectoryPath = [macUserHomePath stringByAppendingPathComponent:@".dyci"];
-        }
-
+    // Flushing UIImage cache
+    [self flushUIImageCache];
+    
+    if ([[path pathExtension] isEqualToString:@"strings"]) {
+        [self flushBundleCache:[NSBundle mainBundle]];
     }
-
-    NSLog(@"DYCI directory path is : %@", dciDirectoryPath);
-    return dciDirectoryPath;
+    
+    [[SFInjectionsNotificationsCenter sharedInstance] notifyOnResourceInjection:path];
 }
 
+- (void)injectWithLibraryAtPath:(NSString *)path {
+    NSLog(@" ");
+    NSLog(@" ================================================= ");
+    NSLog(@"Found new DCI ... Loading");
+    
+    NSMutableSet * classesSet = [NSMutableSet currentClassesSet];
+    
+    void * libHandle = dlopen([path cStringUsingEncoding:NSUTF8StringEncoding],
+                              RTLD_NOW | RTLD_GLOBAL);
+    char * err = dlerror();
+    
+    if (libHandle) {
+        
+        NSLog(@"DYCI was successfully loaded");
+        NSLog(@"Searching classes to inject");
+        
+        // Retrieving difference between old classes list and
+        // current classes list
+        NSMutableSet * currentClassesSet = [NSMutableSet currentClassesSet];
+        [currentClassesSet minusSet:classesSet];
+        
+        [self performInjectionWithClassesInSet:currentClassesSet];
+        
+    } else {
+        
+        NSLog(@"Couldn't load file Error : %s", err);
+        
+    }
+    
+    NSLog(@" ");
+    
+    dlclose(libHandle);
+}
 
 #pragma mark - Injections
 
@@ -210,18 +236,7 @@
 }
 
 
-#pragma mark - Helpers
 
-+ (void)saveCurrentApplicationBundlePath:(NSString *)dyciPath {
-
-   NSString * filePathWithBundleInformation = [dyciPath stringByAppendingPathComponent:@"bundle"];
-
-   NSString * mainBundlePath = [[NSBundle mainBundle] resourcePath];
-   [mainBundlePath writeToFile:filePathWithBundleInformation
-                    atomically:NO
-                      encoding:NSUTF8StringEncoding
-                         error:nil];
-}
 
 #pragma mark - Privat API's
 
@@ -263,79 +278,6 @@ extern void _CFBundleFlushBundleCaches(CFBundleRef bundle) __attribute__((weak_i
          
          CFRelease(myBundle);
          CFRelease(bundleURL);
-   }
-}
-
-
-#pragma mark - SFLibWatcherDelegate
-
-- (void)newFileWasFoundAtPath:(NSString *)filePath {
-
-    NSLog(@"New file injection detected at path : %@", filePath);
-   if ([[filePath lastPathComponent] isEqualToString:@"resource"]) {
-
-      NSLog(@" ");
-      NSLog(@" ================================================= ");
-      NSLog(@"New resource was injected");
-      NSLog(@"All classes will be notified with");
-      NSLog(@" - (void)updateOnResourceInjection:(NSString *)path ");
-      NSLog(@" ");
-      
-      NSString * injectedResourcePath =
-      [NSString stringWithContentsOfFile:filePath
-                                encoding:NSUTF8StringEncoding
-                                   error:nil];
-
-      // Flushing UIImage cache
-      [self flushUIImageCache];
-
-      if ([[injectedResourcePath pathExtension] isEqualToString:@"strings"]) {
-         [self flushBundleCache:[NSBundle mainBundle]];
-      }
-
-      [[SFInjectionsNotificationsCenter sharedInstance] notifyOnResourceInjection:injectedResourcePath];
-
-   }
-
-   // If its library
-   // Sometimes... we got notification with temporary file
-   // dci12123.dylib.ld_1237sj
-   NSString * dciDynamicLibraryPath = filePath;
-   if (![[dciDynamicLibraryPath pathExtension] isEqualToString:@"dylib"]) {
-      dciDynamicLibraryPath = [dciDynamicLibraryPath stringByDeletingPathExtension];
-   }
-   if ([[dciDynamicLibraryPath pathExtension] isEqualToString:@"dylib"]) {
-      NSLog(@" ");
-      NSLog(@" ================================================= ");
-      NSLog(@"Found new DCI ... Loading");
-      
-      NSMutableSet * classesSet = [NSMutableSet currentClassesSet];
-      
-      void * libHandle = dlopen([dciDynamicLibraryPath cStringUsingEncoding:NSUTF8StringEncoding],
-                                RTLD_NOW | RTLD_GLOBAL);
-      char * err = dlerror();
-      
-      if (libHandle) {
-         
-         NSLog(@"DYCI was successfully loaded");
-         NSLog(@"Searching classes to inject");
-
-         // Retrieving difference between old classes list and
-         // current classes list
-         NSMutableSet * currentClassesSet = [NSMutableSet currentClassesSet];
-         [currentClassesSet minusSet:classesSet];
-
-         [self performInjectionWithClassesInSet:currentClassesSet];
-         
-      } else {
-
-         NSLog(@"Couldn't load file Error : %s", err);
-
-      }
-
-      NSLog(@" ");
-
-      dlclose(libHandle);
    }
 }
 
