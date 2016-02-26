@@ -331,7 +331,9 @@ extern void _CFBundleFlushBundleCaches(CFBundleRef bundle) __attribute__((weak_i
          
       } else {
 
-         NSLog(@"Couldn't load file Error : %s", err);
+         NSString *errorDescription = [NSString stringWithFormat:@"Couldn't load file Error : %s", err];
+         NSLog(errorDescription);
+         [[SFInjectionsNotificationsCenter sharedInstance] notifyErrorInjecting:errorDescription];
 
       }
 
