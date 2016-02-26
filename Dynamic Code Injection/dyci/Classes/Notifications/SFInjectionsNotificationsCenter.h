@@ -93,6 +93,12 @@ This will notiy all registered classes about that some resource was injected
  */
 - (void)notifyOnResourceInjection:(NSString *)resourceInjection;
 
+
+/*
+ This will post a notification about an error with code injection
+ */
+- (void)notifyErrorInjecting:(NSString *)errorDescription;
+
 @end
 
 #endif
