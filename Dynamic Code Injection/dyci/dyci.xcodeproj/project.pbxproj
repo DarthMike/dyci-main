@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4727386E1C80BA9A002E08A3 /* SFHTTPCodeInjection.m in Sources */ = {isa = PBXBuildFile; fileRef = 4727386D1C80BA9A002E08A3 /* SFHTTPCodeInjection.m */; };
 		478A34981C80A66C00C587FF /* SFFileSystemCodeInjection.m in Sources */ = {isa = PBXBuildFile; fileRef = 478A34971C80A66C00C587FF /* SFFileSystemCodeInjection.m */; };
 		E40867CB164695180002D2ED /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E40867CA164695180002D2ED /* Foundation.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		E40867EB164695F70002D2ED /* NSSet+ClassesList.m in Sources */ = {isa = PBXBuildFile; fileRef = E40867E1164695F70002D2ED /* NSSet+ClassesList.m */; };
@@ -31,6 +32,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4727386C1C80BA9A002E08A3 /* SFHTTPCodeInjection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SFHTTPCodeInjection.h; sourceTree = "<group>"; };
+		4727386D1C80BA9A002E08A3 /* SFHTTPCodeInjection.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SFHTTPCodeInjection.m; sourceTree = "<group>"; };
 		478A34961C80A66C00C587FF /* SFFileSystemCodeInjection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SFFileSystemCodeInjection.h; sourceTree = "<group>"; };
 		478A34971C80A66C00C587FF /* SFFileSystemCodeInjection.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SFFileSystemCodeInjection.m; sourceTree = "<group>"; };
 		E40867C7164695180002D2ED /* libdyci.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libdyci.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -102,6 +105,8 @@
 				E40867EA164695F70002D2ED /* SFDynamicCodeInjection.m */,
 				478A34961C80A66C00C587FF /* SFFileSystemCodeInjection.h */,
 				478A34971C80A66C00C587FF /* SFFileSystemCodeInjection.m */,
+				4727386C1C80BA9A002E08A3 /* SFHTTPCodeInjection.h */,
+				4727386D1C80BA9A002E08A3 /* SFHTTPCodeInjection.m */,
 			);
 			path = Classes;
 			sourceTree = "<group>";
@@ -212,6 +217,7 @@
 				E40867ED164695F70002D2ED /* NSObject+DyCInjection.m in Sources */,
 				E40867EE164695F70002D2ED /* SFDynamicCodeInjection.m in Sources */,
 				E4D6E5211668D217007A50A4 /* UIViewController+XIBSupport.m in Sources */,
+				4727386E1C80BA9A002E08A3 /* SFHTTPCodeInjection.m in Sources */,
 				EEDBED62B39AD60BD979D525 /* UINib+StoryBoardSupport.m in Sources */,
 				E4584AE4175A22EC00460B8C /* SFInjectionsNotificationsCenter.m in Sources */,
 			);
